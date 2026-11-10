@@ -30,14 +30,19 @@ class CatGirlHook : IXposedHookLoadPackage {
     @Volatile private var cacheSuffix = "喵"
 
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
-        if (lpparam.packageName !in SCOPES) return
+        // 不再限定具体应用：只要输入框是「聊天发送」场景，任何 App 都生效。
+        // 通过 imeOptions / 发送按钮判定，避免影响搜索框、表单等。
 
         safe("editorAction") {
             XposedHelpers.findAndHookMethod(
                 "android.widget.TextView", lpparam.classLoader,
                 "onEditorAction", Int::class.javaPrimitiveType,
                 object : XC_MethodHook() {
-                    override fun beforeHookedMethod(param: MethodHookParam) = apply(param.thisObject)
+                    override fun beforeHookedMethod(param: MethodHookParam) {
+                        val action = param.args[0] as? Int ?: return
+                        // 6 = IME_ACTION_SEND
+                        if (action == 6) apply(param.thisObject)
+                    }
                 },
             )
         }
@@ -48,7 +53,10 @@ class CatGirlHook : IXposedHookLoadPackage {
                 "onKeyDown", Int::class.javaPrimitiveType, KeyEvent::class.java,
                 object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
-                        if ((param.args[0] as Int) == KeyEvent.KEYCODE_ENTER) apply(param.thisObject)
+                        val et = param.thisObject as? EditText ?: return
+                        if ((param.args[0] as Int) == KeyEvent.KEYCODE_ENTER &&
+                            (isChatInput(et) || looksLikeChat(et))
+                        ) apply(et)
                     }
                 },
             )
@@ -61,7 +69,8 @@ class CatGirlHook : IXposedHookLoadPackage {
                     override fun beforeHookedMethod(param: MethodHookParam) {
                         val v = param.thisObject as? View ?: return
                         val label = (v as? TextView)?.text?.toString() ?: return
-                        if (sendTexts.any { label.contains(it) }) apply(v.rootView.findFocus())
+                        val target = v.rootView.findFocus() as? EditText ?: return
+                        if (sendTexts.any { label.contains(it) } || isChatInput(target)) apply(target)
                     }
                 },
             )
@@ -73,6 +82,28 @@ class CatGirlHook : IXposedHookLoadPackage {
             block()
         } catch (t: Throwable) {
             XposedBridge.log("catgirl/$tag: ${t.message}")
+        }
+    }
+
+    /** 输入框声明了「发送」动作：典型的聊天输入框。 */
+    private fun isChatInput(et: EditText): Boolean {
+        return try {
+            (et.imeOptions and android.view.inputmethod.EditorInfo.IME_MASK_ACTION) ==
+                android.view.inputmethod.EditorInfo.IME_ACTION_SEND
+        } catch (t: Throwable) {
+            false
+        }
+    }
+
+    /** 兜底：输入框是多行的，且没有声明搜索/网址等类型，视为聊天框。 */
+    private fun looksLikeChat(et: EditText): Boolean {
+        return try {
+            val type = et.inputType and android.text.InputType.TYPE_MASK_CLASS
+            val isSearch = (et.imeOptions and android.view.inputmethod.EditorInfo.IME_MASK_ACTION) ==
+                android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
+            !isSearch && (type == android.text.InputType.TYPE_CLASS_TEXT)
+        } catch (t: Throwable) {
+            false
         }
     }
 
@@ -138,7 +169,4 @@ class CatGirlHook : IXposedHookLoadPackage {
         ""
     }
 
-    companion object {
-        private val SCOPES = setOf("com.tencent.mobileqq", "com.tencent.mm")
-    }
 }
