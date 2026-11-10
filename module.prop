@@ -1,6 +1,6 @@
 id=catgirl_mode
 name=猫娘模式
-version=v0.1
-versionCode=1
+version=v1.0
+versionCode=100
 author=huijui forge
-description=发送消息时自动在末尾加上「喵」，可随时关闭恢复；自带猫娘头像素材。
+description=发送消息时自动猫娘化（本喵/系/表 + 喵），开关实时生效，关模块即失效。
