@@ -35,6 +35,7 @@ jobs:
           cp "$APK" out/system/app/CatGirl/CatGirl.apk
           cp module.prop out/
           cp customize.sh out/
+          cp service.sh out/
           mkdir -p out/META-INF/com/google/android
           cp META-INF/com/google/android/* out/META-INF/com/google/android/
           cd out && zip -r ../CatGirlModule.zip . >/dev/null
