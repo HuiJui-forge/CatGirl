@@ -1,8 +1,9 @@
 package com.huijui.catgirl
 
 import android.app.AndroidAppHelper
-import android.content.Context
+import android.os.SystemProperties
 import android.text.Editable
+import android.view.KeyEvent
 import android.view.View
 import android.widget.EditText
 import android.widget.TextView
@@ -13,56 +14,56 @@ import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 
 /**
- * 猫娘模式：发送前在输入框末尾追加词尾。
+ * 猫娘模式：发送前在输入框末尾补词尾。
  *
- * 说明：
- * - 不写死 QQ 内部类，只用 Android 框架类做通用钩子，升级 QQ 也不容易失效。
- * - 命中「发送」时，先改文本再放行原方法，所以对方收到的是带「喵」的内容。
- * - 关掉开关后行为完全恢复，不改任何持久数据。
+ * 状态来源用 system property（catgirl.mode / catgirl.suffix）：
+ * - 普通应用可读，不需要跨进程读 SharedPreferences
+ * - 开关一改立即生效，不用重启目标应用
+ *
+ * 开关状态由 App 通过 su 写入 /data/adb/catgirl/mode 并 setprop，
+ * 开机时由模块 service.sh 重新 setprop，保证重启后仍然有效。
  */
 class CatGirlHook : IXposedHookLoadPackage {
 
-    private val sendTexts = listOf("发送", "Send", "send", "发送键")
+    private val sendTexts = listOf("发送", "Send", "send")
+
+    private fun enabled(): Boolean =
+        runCatching { SystemProperties.get("catgirl.mode", "0") == "1" }.getOrDefault(false)
+
+    private fun suffix(): String =
+        runCatching { SystemProperties.get("catgirl.suffix", "喵") }.getOrDefault("喵").ifBlank { "喵" }
 
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
         if (lpparam.packageName != "com.tencent.mobileqq" &&
             lpparam.packageName != "com.tencent.mm"
         ) return
 
-        val ctx: Context = AndroidAppHelper.currentApplication() ?: return
-        if (!Prefs.enabled(ctx)) return
-        val suffix = Prefs.suffix(ctx)
+        // 注意：这里不在加载时判断开关，保证「开启即生效、关闭即失效」
 
-        // 1) 键盘上的「发送」动作
         runCatching {
             XposedHelpers.findAndHookMethod(
                 "android.widget.TextView", lpparam.classLoader,
                 "onEditorAction", Int::class.javaPrimitiveType,
                 object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
-                        appendSuffix(param.thisObject as? TextView ?: return)
+                        appendSuffix(param.thisObject)
                     }
                 },
             )
         }.onFailure { XposedBridge.log("catgirl: editorAction hook failed ${it.message}") }
 
-        // 2) 回车键发送
         runCatching {
             XposedHelpers.findAndHookMethod(
                 "android.widget.EditText", lpparam.classLoader,
-                "onKeyDown", Int::class.javaPrimitiveType, android.view.KeyEvent::class.java,
+                "onKeyDown", Int::class.javaPrimitiveType, KeyEvent::class.java,
                 object : XC_MethodHook() {
                     override fun beforeHookedMethod(param: MethodHookParam) {
-                        val code = param.args[0] as Int
-                        if (code == android.view.KeyEvent.KEYCODE_ENTER) {
-                            appendSuffix(param.thisObject as? EditText ?: return)
-                        }
+                        if ((param.args[0] as Int) == KeyEvent.KEYCODE_ENTER) appendSuffix(param.thisObject)
                     }
                 },
             )
         }.onFailure { XposedBridge.log("catgirl: keydown hook failed ${it.message}") }
 
-        // 3) 点击「发送」按钮
         runCatching {
             XposedHelpers.findAndHookMethod(
                 "android.view.View", lpparam.classLoader, "performClick",
@@ -77,15 +78,13 @@ class CatGirlHook : IXposedHookLoadPackage {
         }.onFailure { XposedBridge.log("catgirl: click hook failed ${it.message}") }
     }
 
-    /** 给输入框补词尾；已有则不重复追加。 */
     private fun appendSuffix(target: Any?) {
+        if (!enabled()) return
         val et = target as? EditText ?: return
         val editable: Editable = et.text ?: return
-        val ctx: Context = AndroidAppHelper.currentApplication() ?: return
-        if (!Prefs.enabled(ctx)) return
-        val suffix = Prefs.suffix(ctx)
+        val s = suffix()
         val text = editable.toString()
-        if (text.isBlank() || text.endsWith(suffix)) return
-        editable.append(suffix)
+        if (text.isBlank() || text.endsWith(s)) return
+        editable.append(s)
     }
 }
