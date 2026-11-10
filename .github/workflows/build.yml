@@ -1,0 +1,48 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ "v*" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Build APK
+        run: gradle :app:assembleRelease --no-daemon
+      - name: Assemble module zip
+        run: |
+          set -e
+          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          mkdir -p out/system/app/CatGirl
+          cp "$APK" out/system/app/CatGirl/CatGirl.apk
+          cp module.prop out/
+          cp customize.sh out/
+          mkdir -p out/META-INF/com/google/android
+          cp META-INF/com/google/android/* out/META-INF/com/google/android/
+          cd out && zip -r ../CatGirlModule.zip . >/dev/null
+          cd .. && ls -lh CatGirlModule.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CatGirlModule
+          path: CatGirlModule.zip
+      - name: Upload to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: CatGirlModule.zip
+          generate_release_notes: true
