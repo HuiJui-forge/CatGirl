@@ -1,7 +1,6 @@
 package com.huijui.catgirl
 
 import android.app.AndroidAppHelper
-import android.os.SystemProperties
 import android.text.Editable
 import android.view.KeyEvent
 import android.view.View
@@ -27,11 +26,31 @@ class CatGirlHook : IXposedHookLoadPackage {
 
     private val sendTexts = listOf("发送", "Send", "send")
 
-    private fun enabled(): Boolean =
-        runCatching { SystemProperties.get("catgirl.mode", "0") == "1" }.getOrDefault(false)
+    // SystemProperties 是隐藏 API，编译期拿不到；这里用 getprop 命令行读取，
+    // 带 800ms 缓存，避免每次发送都 fork 进程。
+    @Volatile private var cacheTime = 0L
+    @Volatile private var cacheMode = false
+    @Volatile private var cacheSuffix = "喵"
 
-    private fun suffix(): String =
-        runCatching { SystemProperties.get("catgirl.suffix", "喵") }.getOrDefault("喵").ifBlank { "喵" }
+    private fun refresh() {
+        val now = System.currentTimeMillis()
+        if (now - cacheTime < 800) return
+        cacheTime = now
+        cacheMode = getprop("catgirl.mode") == "1"
+        cacheSuffix = getprop("catgirl.suffix").ifBlank { "喵" }
+    }
+
+    private fun getprop(key: String): String = runCatching {
+        val p = ProcessBuilder("/system/bin/getprop", key).redirectErrorStream(true).start()
+        p.outputStream.close()
+        val out = p.inputStream.bufferedReader().readText().trim()
+        p.waitFor()
+        out
+    }.getOrDefault("")
+
+    private fun enabled(): Boolean { refresh(); return cacheMode }
+
+    private fun suffix(): String { refresh(); return cacheSuffix.ifBlank { "喵" } }
 
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
         if (lpparam.packageName != "com.tencent.mobileqq" &&
