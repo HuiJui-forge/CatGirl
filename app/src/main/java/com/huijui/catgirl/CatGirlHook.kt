@@ -31,6 +31,7 @@ class CatGirlHook : IXposedHookLoadPackage {
     @Volatile private var cacheTime = 0L
     @Volatile private var cacheMode = false
     @Volatile private var cacheSuffix = "喵"
+    @Volatile private var cacheStyle = true
 
     private fun refresh() {
         val now = System.currentTimeMillis()
@@ -38,6 +39,7 @@ class CatGirlHook : IXposedHookLoadPackage {
         cacheTime = now
         cacheMode = getprop("catgirl.mode") == "1"
         cacheSuffix = getprop("catgirl.suffix").ifBlank { "喵" }
+        cacheStyle = getprop("catgirl.style").ifBlank { "1" } == "1"
     }
 
     private fun getprop(key: String): String = runCatching {
@@ -47,6 +49,24 @@ class CatGirlHook : IXposedHookLoadPackage {
         p.waitFor()
         out
     }.getOrDefault("")
+
+    // 猫娘语气：把常见词替换成猫娘说法，再加词尾
+    private fun catify(input: String): String {
+        var t = input
+        t = t.replace("我", "本喵")
+        t = t.replace("你", "泥")
+        t = t.replace("是", "系")
+        t = t.replace("不", "表")
+        t = t.replace("很", "超")
+        t = t.replace("吗", "嘛")
+        t = t.replace("了", "惹")
+        t = t.replace("的", "哒")
+        val s = suffix()
+        if (!t.endsWith(s)) t += s
+        return t
+    }
+
+    private fun styleEnabled(): Boolean { refresh(); return cacheStyle }
 
     private fun enabled(): Boolean { refresh(); return cacheMode }
 
@@ -103,7 +123,13 @@ class CatGirlHook : IXposedHookLoadPackage {
         val editable: Editable = et.text ?: return
         val s = suffix()
         val text = editable.toString()
-        if (text.isBlank() || text.endsWith(s)) return
+        if (text.isBlank()) return
+        if (styleEnabled()) {
+            if (text.endsWith(s)) return
+            editable.replace(0, editable.length, catify(text))
+            return
+        }
+        if (text.endsWith(s)) return
         editable.append(s)
     }
 }

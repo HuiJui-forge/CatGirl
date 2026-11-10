@@ -49,6 +49,15 @@ class MainActivity : AppCompatActivity() {
         }
         root.addView(toggle)
 
+        val style = Switch(this).apply {
+            text = "猫娘语气（我→本喵、是→系、不→表…）"
+            isChecked = shell("getprop catgirl.style").trim() != "0"
+            setOnCheckedChangeListener { _, v ->
+                shell("setprop catgirl.style " + if (v) "1" else "0")
+            }
+        }
+        root.addView(style)
+
         root.addView(TextView(this).apply {
             text = "词尾（默认「喵」）"; textSize = 14f; setPadding(0, 32, 0, 8)
         })
