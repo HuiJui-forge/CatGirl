@@ -27,7 +27,7 @@ class CatGirlHook : IXposedHookLoadPackage {
     @Volatile private var cacheTime = 0L
     @Volatile private var cacheMode = false
     @Volatile private var cacheStyle = true
-    @Volatile private var cacheSuffix = "喵"
+    @Volatile private var cacheSuffix = "喵~"
 
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
         // 不再限定具体应用：只要输入框是「聊天发送」场景，任何 App 都生效。
@@ -136,17 +136,19 @@ class CatGirlHook : IXposedHookLoadPackage {
     private fun render(input: String): String {
         var t = input
         if (cacheStyle) {
-            t = t.replace("我", "本喵")
-                .replace("你", "泥")
+            t = t.replace("我", "人家")
+                .replace("你", "你呀")
                 .replace("是", "系")
                 .replace("不", "表")
                 .replace("很", "超")
                 .replace("吗", "嘛")
                 .replace("了", "惹")
                 .replace("的", "哒")
+                .replace("。", "~")
+                .replace("！", "！")
         }
-        val s = cacheSuffix
-        if (s.isNotBlank() && !t.endsWith(s)) t += s
+        val s = cacheSuffix.ifBlank { "喵~" }
+        if (!t.endsWith(s)) t += s
         return t
     }
 
@@ -156,7 +158,7 @@ class CatGirlHook : IXposedHookLoadPackage {
         cacheTime = now
         cacheMode = getprop("catgirl.mode") == "1"
         cacheStyle = getprop("catgirl.style").ifBlank { "1" } == "1"
-        cacheSuffix = getprop("catgirl.suffix").ifBlank { "喵" }
+        cacheSuffix = getprop("catgirl.suffix").ifBlank { "喵~" }
     }
 
     private fun getprop(key: String): String = try {

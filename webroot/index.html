@@ -71,7 +71,7 @@ pre{white-space:pre-wrap;word-break:break-all;font-size:11px;color:var(--dim);
     </div>
     <div class="row" style="display:block">
       <div class="label">词尾</div>
-      <input id="suffix" type="text" placeholder="喵">
+      <input id="suffix" type="text" placeholder="喵~">
     </div>
     <button id="save">保存</button>
   </div>
@@ -82,7 +82,7 @@ pre{white-space:pre-wrap;word-break:break-all;font-size:11px;color:var(--dim);
     <pre id="log"></pre>
   </div>
 
-  <div class="foot">huijui forge · CatGirl v2.0</div>
+  <div class="foot">huijui forge · CatGirl v2.0pro</div>
 </div>
 
 <script>
@@ -116,15 +116,15 @@ async function refresh() {
   if (suffix && !$("suffix").value) $("suffix").value = suffix;
   $("pills").innerHTML = pill(mode === "1" ? "已激活" : "未激活", mode === "1") +
                          pill(style !== "0" ? "猫娘语气" : "仅词尾", style !== "0") +
-                         pill("词尾 " + (suffix || "喵"), false);
-  renderPreview(suffix || "喵", style !== "0");
+                         pill("词尾 " + (suffix || "喵~"), false);
+  renderPreview(suffix || "喵~", style !== "0");
   $("log").textContent = "mode=" + mode + " style=" + style + " suffix=" + suffix;
 }
 
 function catify(text, style, suffix) {
   let t = text;
   if (style) {
-    t = t.replace(/我/g,"本喵").replace(/你/g,"泥").replace(/是/g,"系")
+    t = t.replace(/我/g,"人家").replace(/你/g,"你呀").replace(/是/g,"系")
          .replace(/不/g,"表").replace(/很/g,"超").replace(/吗/g,"嘛")
          .replace(/了/g,"惹").replace(/的/g,"哒");
   }
@@ -157,12 +157,12 @@ $("style").addEventListener("change", async e => {
 });
 
 $("save").addEventListener("click", async () => {
-  const s = ($("suffix").value || "喵").trim() || "喵";
+  const s = ($("suffix").value || "喵~").trim() || "喵~";
   await exec(`mkdir -p /data/adb/catgirl; echo '${s}' > /data/adb/catgirl/suffix; setprop catgirl.suffix '${s}'; getprop catgirl.suffix`);
   refresh();
 });
 
-$("suffix").addEventListener("input", e => renderPreview(e.target.value || "喵", $("style").checked));
+$("suffix").addEventListener("input", e => renderPreview(e.target.value || "喵~", $("style").checked));
 
 refresh();
 setInterval(refresh, 3000);

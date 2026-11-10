@@ -61,13 +61,13 @@ class MainActivity : AppCompatActivity() {
         root.addView(TextView(this).apply {
             text = "词尾（默认「喵」）"; textSize = 14f; setPadding(0, 32, 0, 8)
         })
-        val suffix = EditText(this).apply { setText(prefs.getString(Prefs.KEY_SUFFIX, "喵")) }
+        val suffix = EditText(this).apply { setText(prefs.getString(Prefs.KEY_SUFFIX, "喵~")) }
         root.addView(suffix)
 
         root.addView(Button(this).apply {
             text = "保存词尾"
             setOnClickListener {
-                val s = suffix.text.toString().ifBlank { "喵" }
+                val s = suffix.text.toString().ifBlank { "喵~" }
                 prefs.edit().putString(Prefs.KEY_SUFFIX, s).apply()
                 val ok = shell("setprop catgirl.suffix '$s'").isNotEmpty() ||
                     shell("setprop catgirl.suffix '$s'; getprop catgirl.suffix").trim() == s
