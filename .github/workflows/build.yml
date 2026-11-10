@@ -36,10 +36,11 @@ jobs:
           cp module.prop out/
           cp customize.sh out/
           cp service.sh out/
+          cp -r webroot out/
           mkdir -p out/META-INF/com/google/android
           cp META-INF/com/google/android/* out/META-INF/com/google/android/
           cd out && zip -r ../CatGirlModule.zip . >/dev/null
-          cd .. && ls -lh CatGirlModule.zip
+          cd .. && ls -lh CatGirlModule.zip && unzip -l CatGirlModule.zip | head -20
       - uses: actions/upload-artifact@v4
         with:
           name: CatGirlModule

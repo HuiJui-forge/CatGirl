@@ -1,6 +1,6 @@
 id=catgirl_mode
 name=猫娘模式
-version=v1.1
-versionCode=110
+version=v2.0
+versionCode=200
 author=huijui forge
-description=发送消息时自动猫娘化（本喵/系/表 + 喵），开关实时生效，关模块即失效。
+description=所有聊天应用发送时自动猫娘化（本喵/系/表 + 喵），搜索框不受影响；WebUI 可视化开关，开即生效、关即失效。

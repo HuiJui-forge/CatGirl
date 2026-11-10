@@ -7,8 +7,8 @@ android {
         applicationId = "com.huijui.catgirl"
         minSdk = 26
         targetSdk = 35
-        versionCode = 110
-        versionName = "v1.1"
+        versionCode = 200
+        versionName = "v2.0"
     }
     buildTypes { release { isMinifyEnabled = false } }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }

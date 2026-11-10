@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>猫娘模式</title>
+<style>
+:root{--a1:#3ee6c4;--a2:#4f8bff;--a3:#b06bff;--bg:#070a11;--fg:#e9edf7;--dim:#98a2b8;--line:rgba(150,170,220,.16)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--fg);
+ font:15px/1.6 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;overflow-x:hidden}
+.bg{position:fixed;inset:0;z-index:-1;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55}
+.o1{width:320px;height:320px;left:-90px;top:-60px;background:radial-gradient(circle,#1fb6a0,transparent 65%);animation:f1 16s ease-in-out infinite}
+.o2{width:380px;height:380px;right:-120px;top:140px;background:radial-gradient(circle,#3d6bff,transparent 65%);animation:f2 20s ease-in-out infinite}
+@keyframes f1{50%{transform:translate(40px,30px) scale(1.1)}}
+@keyframes f2{50%{transform:translate(-50px,40px) scale(1.08)}}
+.wrap{max-width:520px;margin:0 auto;padding:28px 18px 40px}
+h1{font-size:26px;margin:0 0 6px;letter-spacing:.5px}
+h1 span{background:linear-gradient(92deg,var(--a1),var(--a2),var(--a3));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--dim);font-size:13px;margin:0 0 22px}
+.card{border:1px solid var(--line);background:rgba(16,22,34,.62);backdrop-filter:blur(14px);
+ border-radius:18px;padding:16px 16px 18px;margin-bottom:14px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.row+.row{margin-top:14px}
+.label{font-size:14px}
+.hint{font-size:12px;color:var(--dim);margin-top:4px}
+.switch{position:relative;width:52px;height:30px;flex:0 0 auto}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;border-radius:999px;background:#222a3a;transition:.25s;border:1px solid var(--line)}
+.slider:before{content:"";position:absolute;width:24px;height:24px;left:3px;top:2px;border-radius:50%;
+ background:#8b95a8;transition:.25s}
+.switch input:checked+.slider{background:linear-gradient(92deg,var(--a1),var(--a2));border-color:transparent}
+.switch input:checked+.slider:before{transform:translateX(22px);background:#05121a}
+input[type=text]{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);
+ background:rgba(8,11,18,.8);color:var(--fg);font-size:15px;outline:none;margin-top:8px}
+input[type=text]:focus{border-color:var(--a1)}
+button{width:100%;padding:13px;border-radius:14px;border:none;font-size:15px;font-weight:600;
+ background:linear-gradient(92deg,var(--a1),var(--a2));color:#05121a;margin-top:12px}
+button:disabled{opacity:.5}
+.status{font-size:13px;color:var(--dim)}
+.status b{color:var(--a1)}
+.pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;
+ border:1px solid var(--line);color:var(--dim);margin-right:6px}
+.pill.on{color:#05121a;background:linear-gradient(92deg,var(--a1),var(--a2));border-color:transparent}
+pre{white-space:pre-wrap;word-break:break-all;font-size:11px;color:var(--dim);
+ background:rgba(0,0,0,.35);border-radius:10px;padding:10px;margin:10px 0 0;max-height:120px;overflow:auto}
+.foot{text-align:center;color:var(--dim);font-size:12px;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="bg"><div class="orb o1"></div><div class="orb o2"></div></div>
+<div class="wrap">
+  <h1><span>猫娘模式</span></h1>
+  <p class="sub">开启后，所有聊天应用发送时会变成猫娘语气；搜索框不受影响。</p>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <div class="label">启用猫娘模式</div>
+        <div class="hint">开即生效，关即失效，无需重启</div>
+      </div>
+      <label class="switch"><input id="mode" type="checkbox"><i class="slider"></i></label>
+    </div>
+    <div class="row">
+      <div>
+        <div class="label">猫娘语气</div>
+        <div class="hint">我→本喵、是→系、不→表…</div>
+      </div>
+      <label class="switch"><input id="style" type="checkbox"><i class="slider"></i></label>
+    </div>
+    <div class="row" style="display:block">
+      <div class="label">词尾</div>
+      <input id="suffix" type="text" placeholder="喵">
+    </div>
+    <button id="save">保存</button>
+  </div>
+
+  <div class="card">
+    <div class="status">状态：<span id="pills"></span></div>
+    <div class="status" id="preview" style="margin-top:8px"></div>
+    <pre id="log"></pre>
+  </div>
+
+  <div class="foot">huijui forge · CatGirl v2.0</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const ksu = window.ksu || null;
+
+function exec(cmd) {
+  return new Promise(resolve => {
+    try {
+      if (ksu && ksu.exec) {
+        ksu.exec(cmd, "{}", (_, out) => resolve(out || ""));
+      } else if (ksu && ksu.execAsync) {
+        ksu.execAsync(cmd).then(resolve).catch(() => resolve(""));
+      } else {
+        resolve("__NO_KSU__");
+      }
+    } catch (e) { resolve("__ERR__" + e); }
+  });
+}
+
+function pill(text, on) {
+  return `<span class="pill ${on ? "on" : ""}">${text}</span>`;
+}
+
+async function refresh() {
+  const mode = (await exec("getprop catgirl.mode")).trim();
+  const style = (await exec("getprop catgirl.style")).trim();
+  const suffix = (await exec("getprop catgirl.suffix")).trim();
+  $("mode").checked = mode === "1";
+  $("style").checked = style !== "0";
+  if (suffix && !$("suffix").value) $("suffix").value = suffix;
+  $("pills").innerHTML = pill(mode === "1" ? "已激活" : "未激活", mode === "1") +
+                         pill(style !== "0" ? "猫娘语气" : "仅词尾", style !== "0") +
+                         pill("词尾 " + (suffix || "喵"), false);
+  renderPreview(suffix || "喵", style !== "0");
+  $("log").textContent = "mode=" + mode + " style=" + style + " suffix=" + suffix;
+}
+
+function catify(text, style, suffix) {
+  let t = text;
+  if (style) {
+    t = t.replace(/我/g,"本喵").replace(/你/g,"泥").replace(/是/g,"系")
+         .replace(/不/g,"表").replace(/很/g,"超").replace(/吗/g,"嘛")
+         .replace(/了/g,"惹").replace(/的/g,"哒");
+  }
+  if (suffix && !t.endsWith(suffix)) t += suffix;
+  return t;
+}
+
+function renderPreview(suffix, style) {
+  const sample = "我知道了";
+  const out = catify(sample, style, suffix);
+  $("preview").innerHTML = `预览：<b>${sample}</b> → <b>${out}</b>`;
+}
+
+async function apply(mode) {
+  const m = mode ? "1" : "0";
+  const out = await exec(`mkdir -p /data/adb/catgirl; echo ${m} > /data/adb/catgirl/mode; setprop catgirl.mode ${m}; getprop catgirl.mode`);
+  return out.trim() === m;
+}
+
+$("mode").addEventListener("change", async e => {
+  const ok = await apply(e.target.checked);
+  if (!ok) { e.target.checked = !e.target.checked; $("log").textContent = "切换失败：没有 root 权限"; }
+  refresh();
+});
+
+$("style").addEventListener("change", async e => {
+  const v = e.target.checked ? "1" : "0";
+  await exec(`setprop catgirl.style ${v}; getprop catgirl.style`);
+  refresh();
+});
+
+$("save").addEventListener("click", async () => {
+  const s = ($("suffix").value || "喵").trim() || "喵";
+  await exec(`mkdir -p /data/adb/catgirl; echo '${s}' > /data/adb/catgirl/suffix; setprop catgirl.suffix '${s}'; getprop catgirl.suffix`);
+  refresh();
+});
+
+$("suffix").addEventListener("input", e => renderPreview(e.target.value || "喵", $("style").checked));
+
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>
